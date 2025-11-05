@@ -35,6 +35,13 @@ const subscriber = redis.createClient({
   }
 });
 
+// Handle Redis errors silently since we fallback to local broadcast
+publisher.on('error', () => {});
+subscriber.on('error', () => {});
+
+// Chat channel name
+const CHAT_CHANNEL = 'chat_messages';
+
 // Connect to Redis
 (async () => {
   try {
@@ -42,33 +49,22 @@ const subscriber = redis.createClient({
     await subscriber.connect();
     redisConnected = true;
     console.log('Connected to Redis - pub/sub enabled');
+    
+    // Subscribe to the chat channel after connection is established
+    await subscriber.subscribe(CHAT_CHANNEL, (message) => {
+      try {
+        const data = JSON.parse(message);
+        // Broadcast to all connected clients
+        io.emit('message', data);
+      } catch (error) {
+        console.error('Error parsing message:', error);
+      }
+    });
   } catch (error) {
     console.log('Redis not available - running in single instance mode');
     console.log('To enable scalability, start Redis server');
   }
 })();
-
-// Handle Redis errors silently since we fallback to local broadcast
-publisher.on('error', () => {});
-subscriber.on('error', () => {});
-
-// Subscribe to the chat channel
-const CHAT_CHANNEL = 'chat_messages';
-
-// Only subscribe if Redis is connected
-if (redisConnected) {
-  subscriber.subscribe(CHAT_CHANNEL, (message) => {
-    try {
-      const data = JSON.parse(message);
-      // Broadcast to all connected clients
-      io.emit('message', data);
-    } catch (error) {
-      console.error('Error parsing message:', error);
-    }
-  }).catch((err) => {
-    console.error('Error subscribing to channel:', err);
-  });
-}
 
 // WebSocket connection handling
 io.on('connection', (socket) => {

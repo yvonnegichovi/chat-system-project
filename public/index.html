@@ -274,12 +274,12 @@
             messageDiv.className = `message ${data.type}`;
 
             if (data.type === 'system') {
-                messageDiv.innerHTML = `<div class="message-content">${data.message}</div>`;
+                messageDiv.innerHTML = `<div class="message-content">${escapeHtml(data.message)}</div>`;
             } else {
                 const timestamp = new Date(data.timestamp).toLocaleTimeString();
                 messageDiv.innerHTML = `
                     <div class="message-header">
-                        <span class="message-username">${data.username}</span>
+                        <span class="message-username">${escapeHtml(data.username)}</span>
                         <span class="message-timestamp">${timestamp}</span>
                     </div>
                     <div class="message-content">${escapeHtml(data.message)}</div>
