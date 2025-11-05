@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalable Chat System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        #login-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            padding: 40px;
+        }
+
+        #login-container input {
+            width: 100%;
+            max-width: 300px;
+            padding: 12px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        #login-container button {
+            width: 100%;
+            max-width: 300px;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #login-container button:hover {
+            background: #5568d3;
+        }
+
+        #chat-container {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.system {
+            background: #e3f2fd;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .message-username {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .message-timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .message-content {
+            color: #333;
+        }
+
+        #typing-indicator {
+            padding: 5px 20px;
+            font-size: 12px;
+            font-style: italic;
+            color: #666;
+            min-height: 20px;
+        }
+
+        .input-container {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-radius: 0 0 10px 10px;
+            border-top: 1px solid #eee;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        #message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #send-button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        #send-button:hover {
+            background: #5568d3;
+        }
+
+        #send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Scalable Chat System</h1>
+            <p>Node.js + Redis + WebSockets</p>
+        </div>
+
+        <div id="login-container">
+            <h2 style="margin-bottom: 20px; color: #667eea;">Welcome!</h2>
+            <input type="text" id="username-input" placeholder="Enter your username" />
+            <button id="join-button">Join Chat</button>
+        </div>
+
+        <div id="chat-container">
+            <div id="messages"></div>
+            <div id="typing-indicator"></div>
+            <div class="input-container">
+                <input type="text" id="message-input" placeholder="Type your message..." />
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let username = '';
+        let typingTimeout;
+
+        const loginContainer = document.getElementById('login-container');
+        const chatContainer = document.getElementById('chat-container');
+        const usernameInput = document.getElementById('username-input');
+        const joinButton = document.getElementById('join-button');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const typingIndicator = document.getElementById('typing-indicator');
+
+        // Join chat
+        joinButton.addEventListener('click', () => {
+            username = usernameInput.value.trim();
+            if (username) {
+                socket.emit('join', username);
+                loginContainer.style.display = 'none';
+                chatContainer.style.display = 'flex';
+                messageInput.focus();
+            }
+        });
+
+        // Allow enter key to join
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                joinButton.click();
+            }
+        });
+
+        // Send message
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('chat_message', message);
+                messageInput.value = '';
+                socket.emit('typing', false);
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Typing indicator
+        messageInput.addEventListener('input', () => {
+            socket.emit('typing', true);
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit('typing', false);
+            }, 1000);
+        });
+
+        // Receive messages
+        socket.on('message', (data) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${data.type}`;
+
+            if (data.type === 'system') {
+                messageDiv.innerHTML = `<div class="message-content">${data.message}</div>`;
+            } else {
+                const timestamp = new Date(data.timestamp).toLocaleTimeString();
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-username">${data.username}</span>
+                        <span class="message-timestamp">${timestamp}</span>
+                    </div>
+                    <div class="message-content">${escapeHtml(data.message)}</div>
+                `;
+            }
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // User typing
+        socket.on('user_typing', (data) => {
+            if (data.isTyping) {
+                typingIndicator.textContent = `${data.username} is typing...`;
+            } else {
+                typingIndicator.textContent = '';
+            }
+        });
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Connection status
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+    </script>
+</body>
+</html>

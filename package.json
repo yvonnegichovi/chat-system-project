@@ -1,0 +1,23 @@
+{
+  "name": "chat-system-project",
+  "version": "1.0.0",
+  "description": "Scalable chat system using Node.js, Redis, and WebSockets",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "chat",
+    "websocket",
+    "redis",
+    "pubsub"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "redis": "^5.9.0",
+    "socket.io": "^4.8.1"
+  }
+}
